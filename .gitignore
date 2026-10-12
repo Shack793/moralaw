@@ -1,0 +1,21 @@
+# local package / notes - never deploy or commit live secrets
+mora-solano-namecheap*.zip
+server.md
+
+# live data - created on server by dashboard, never overwrite
+data/*.php
+data/.lock
+uploads/team/*.jpg
+!uploads/team/.htaccess
+!data/.htaccess
+
+# os / editor
+Thumbs.db
+.DS_Store
+
+# deploy + ssh keys - never commit
+deploy.tar.gz
+*.pem
+id_ed25519*
+id_rsa*
+*morasolano_deploy*

@@ -1,0 +1,91 @@
+name: Deploy to Namecheap via SSH (morasolano.com)
+
+# SSH deploy for Namecheap Stellar shared hosting (cPanel).
+# Repo ROOT == public_html contents (index.php, contact.php, admin/, inc/, .htaccess).
+# NEVER overwrites live data/ (*.php) or uploads/team/*.jpg - they hold login, settings, messages, photos.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-morasolano-ssh
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP (syntax check only)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+
+      - name: PHP lint
+        run: |
+          find . -name "*.php" -not -path "./.git/*" -print0 | xargs -0 -n1 php -l
+
+      - name: Build deploy archive (exclude live data + junk)
+        run: |
+          tar -czf deploy.tar.gz \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.gitignore' \
+            --exclude='mora-solano-namecheap*.zip' \
+            --exclude='server.md' \
+            --exclude='README.txt' \
+            --exclude='README.md' \
+            --exclude='deploy.tar.gz' \
+            --exclude='data/*.php' \
+            --exclude='data/.lock' \
+            --exclude='uploads/team/*.jpg' \
+            --exclude='Thumbs.db' \
+            --exclude='.DS_Store' \
+            .
+          tar -tzf deploy.tar.gz | sort | head -n 60
+          echo "--- must include .htaccess, index.php, contact.php, admin/, inc/ ---"
+          tar -tzf deploy.tar.gz | grep -E '^\./\.htaccess|^\./index\.php|^\./contact\.php|^\./admin/|^\./inc/' | head -n 20
+
+      - name: Copy archive via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "deploy.tar.gz"
+          target: "/home/moraskkk/"
+          overwrite: true
+
+      - name: Extract on server + fix permissions
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -e
+            TARGET="/home/moraskkk/public_html"
+            mkdir -p "$TARGET/data" "$TARGET/uploads/team"
+            tar -xzf /home/moraskkk/deploy.tar.gz -C "$TARGET"
+            rm /home/moraskkk/deploy.tar.gz
+            # keep live data safe, ensure placeholders exist
+            chmod 755 "$TARGET" "$TARGET/admin" "$TARGET/inc" "$TARGET/data" "$TARGET/uploads" "$TARGET/uploads/team" || true
+            find "$TARGET" -type f -name "*.php" -exec chmod 644 {} \; || true
+            chmod 644 "$TARGET/.htaccess" "$TARGET/admin/.htaccess" "$TARGET/inc/.htaccess" "$TARGET/data/.htaccess" "$TARGET/uploads/team/.htaccess" || true
+            php -v || php8.1 -v || true
+            ls -la "$TARGET" | head -n 30
+            echo "DEPLOY OK $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+      - name: Health check (homepage + backend)
+        run: |
+          sleep 10
+          curl -fsSL -o /dev/null -w "site HTTP %{http_code}\n" https://morasolano.com/
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" https://morasolano.com/contact.php || true)
+          echo "contact.php GET status: $CODE (expect 405 = backend alive)"
+          test "$CODE" = "405"

@@ -12,6 +12,7 @@ $addr_html = h($C['address1']) . ($C['address1'] !== '' && $C['address2'] !== ''
 $tel = ms_tel($C['phone']);
 $li = ms_url($S['social']['linkedin']);
 $tg = ms_url($S['social']['telegram'], 'telegram');
+$LG = ms_legal_effective($S);
 header('Content-Type: text/html; charset=UTF-8');
 header('Cache-Control: no-cache');
 ob_start();
@@ -92,7 +93,8 @@ ob_start();
   .hero h1{ font-size:clamp(30px,5.6vw,44px); max-width:520px; }
   .hero p.lead{ margin-top:18px; max-width:460px; color:var(--ink-soft); font-size:clamp(15px,2vw,16px); }
   .cta-row{ margin-top:28px; display:flex; gap:12px; flex-wrap:wrap; }
-  .hero-figure{ background:var(--forest); border-radius:4px; aspect-ratio:4/3; display:flex; align-items:flex-end; padding:clamp(18px,3vw,24px); }
+  .hero-figure{ background:var(--forest); border-radius:4px; aspect-ratio:4/3; display:flex; flex-direction:column; justify-content:space-between; gap:12px; padding:clamp(18px,3vw,24px); }
+  .hero-figure .gavel{ width:clamp(96px,42%,170px); max-height:60%; margin:auto; display:block; }
   .hero-figure .cite{ color:rgba(239,234,224,.85); font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:clamp(14.5px,2vw,15.5px); line-height:1.5; }
   @media (max-width:760px){
     .hero .container{ grid-template-columns:1fr; }
@@ -146,6 +148,8 @@ ob_start();
   .hp{ position:absolute; left:-9999px; }
   .human-check{ display:flex; align-items:center; gap:10px; font-size:13.5px; color:rgba(239,234,224,.85); min-height:36px; cursor:pointer; }
   .human-check input{ width:20px; height:20px; accent-color:var(--brass); flex-shrink:0; }
+  .consent{ font-size:12.5px; line-height:1.55; color:rgba(239,234,224,.72); }
+  .consent a{ color:var(--brass-bright); }
   .submit-btn{ align-self:flex-start; background:var(--brass-bright); color:#241A0B; border:none; min-height:48px; padding:0 28px; border-radius:3px; font-weight:600; font-size:14px; cursor:pointer; }
   .submit-btn:disabled{ opacity:.6; cursor:default; }
   .form-msg{ font-size:13.5px; min-height:20px; }
@@ -244,6 +248,30 @@ ob_start();
       </div>
     </div>
     <div class="hero-figure">
+      <svg class="gavel" viewBox="0 0 220 170" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="gvWood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a170a"/><stop offset=".22" stop-color="#7b4a25"/><stop offset=".4" stop-color="#b57a45"/><stop offset=".6" stop-color="#8a5429"/><stop offset="1" stop-color="#2a170a"/></linearGradient>
+          <linearGradient id="gvHandle" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2a170a"/><stop offset=".35" stop-color="#a8703c"/><stop offset=".55" stop-color="#8a5429"/><stop offset="1" stop-color="#2a170a"/></linearGradient>
+          <linearGradient id="gvBrass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6e4f1c"/><stop offset=".3" stop-color="#f0d08a"/><stop offset=".55" stop-color="#b98c43"/><stop offset="1" stop-color="#5e4216"/></linearGradient>
+          <linearGradient id="gvBlock" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2a170a"/><stop offset=".3" stop-color="#9a6334"/><stop offset=".55" stop-color="#6f4220"/><stop offset="1" stop-color="#22120a"/></linearGradient>
+          <radialGradient id="gvTop" cx=".4" cy=".4" r=".7"><stop offset="0" stop-color="#c58d55"/><stop offset="1" stop-color="#6b3f20"/></radialGradient>
+          <radialGradient id="gvShadow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+        </defs>
+        <ellipse cx="96" cy="152" rx="82" ry="11" fill="url(#gvShadow)"/>
+        <path d="M30 128v14c0 8 29 14 66 14s66-6 66-14v-14z" fill="url(#gvBlock)"/>
+        <ellipse cx="96" cy="128" rx="66" ry="14" fill="url(#gvTop)"/>
+        <ellipse cx="96" cy="128" rx="66" ry="14" fill="none" stroke="#e0b07a" stroke-opacity=".35"/>
+        <g transform="rotate(-24 120 60)">
+          <path d="M113 74h14l-2 82q-5 7-10 0z" fill="url(#gvHandle)"/>
+          <rect x="62" y="30" width="116" height="46" rx="8" fill="url(#gvWood)"/>
+          <ellipse cx="62" cy="53" rx="7" ry="23" fill="#4a2a14"/>
+          <ellipse cx="178" cy="53" rx="7" ry="23" fill="#8f5a2f"/>
+          <rect x="78" y="30" width="9" height="46" fill="url(#gvBrass)"/>
+          <rect x="153" y="30" width="9" height="46" fill="url(#gvBrass)"/>
+          <path d="M92 38h56M92 46h56M92 54h56M92 62h56" stroke="#2a170a" stroke-opacity=".12"/>
+          <rect x="66" y="33" width="108" height="5" rx="2.5" fill="#fff" fill-opacity=".16"/>
+        </g>
+      </svg>
       <div class="cite" data-i18n="hero_quote"></div>
     </div>
   </div>
@@ -332,6 +360,7 @@ ob_start();
       <div class="field"><label for="fMsg" data-i18n="f_msg"></label><textarea id="fMsg" name="message" required></textarea></div>
       <input class="hp" type="text" id="fHoney" name="website_url" tabindex="-1" autocomplete="off" aria-hidden="true">
       <label class="human-check"><input type="checkbox" id="fHuman" required><span data-i18n="f_human"></span></label>
+      <?php if ($LG['privacy']['show']) : ?><p class="consent"><span data-i18n="f_consent"></span> <a href="/<?= h(ms_legal_pages()['privacy']['slug']) ?>" data-i18n="footer_privacy"></a>.</p><?php endif; ?>
       <button type="submit" class="submit-btn" id="submitBtn" data-i18n="f_send"></button>
       <div class="form-msg" id="formMsg" role="status" aria-live="polite"></div>
     </form>
@@ -392,8 +421,8 @@ ob_start();
     <div class="footer-bottom">
       <span data-i18n="footer_rights"></span>
       <div class="footer-legal">
-        <a href="#" data-i18n="footer_legal"></a>
-        <a href="#" data-i18n="footer_privacy"></a>
+        <?php foreach (ms_legal_pages() as $lk => $lp) : if ($LG[$lk]['show']) : ?><a href="/<?= h($lp['slug']) ?>" data-i18n="<?= h($lp['foot']) ?>"></a>
+        <?php endif; endforeach; ?>
         <a href="#top" data-i18n="back_top"></a>
       </div>
       <p class="footer-disclaimer" data-i18n="footer_disclaimer"></p>

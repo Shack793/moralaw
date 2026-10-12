@@ -190,9 +190,9 @@ function text_groups(array $def): array
     }
     $groups += [
         'Team — section'                => ['team_label', 'team_title'],
-        'Contact — section and form'    => ['contact_label', 'contact_title', 'office', 'phone', 'hours', 't_general', 'f_name', 'f_email', 'f_topic', 'f_msg', 'f_human', 'f_send'],
+        'Contact — section and form'    => ['contact_label', 'contact_title', 'office', 'phone', 'hours', 't_general', 'f_name', 'f_email', 'f_topic', 'f_msg', 'f_human', 'f_send', 'f_consent'],
         'Contact form — messages'       => ['m_ok', 'm_fill', 'm_email', 'm_human', 'm_sending', 'm_fail', 'm_rate', 'm_mailto'],
-        'Footer'                        => ['f_tag', 'f_firm', 'back_top', 'footer_rights', 'footer_legal', 'footer_privacy', 'footer_disclaimer'],
+        'Footer'                        => ['f_tag', 'f_firm', 'back_top', 'footer_rights', 'footer_legal', 'footer_privacy', 'footer_terms', 'footer_disclaimer'],
         'Google / search results'       => ['meta_desc'],
     ];
     // anything new that is not listed yet still shows up, so nothing becomes uneditable
@@ -222,7 +222,7 @@ function key_label(string $k): string
         'm_ok' => 'Success message', 'm_fill' => 'Error: missing fields', 'm_email' => 'Error: invalid email', 'm_human' => 'Error: checkbox not ticked',
         'm_sending' => 'Message while sending', 'm_fail' => 'Error: sending failed', 'm_rate' => 'Error: too many messages', 'm_mailto' => 'Message when the page is opened as a local file',
         'f_tag' => 'Short firm description', 'f_firm' => 'Column heading: the firm', 'back_top' => 'Back-to-top link', 'footer_rights' => 'Copyright line',
-        'footer_legal' => 'Legal notice link text', 'footer_privacy' => 'Privacy policy link text', 'footer_disclaimer' => 'Disclaimer',
+        'footer_legal' => 'Legal notice link text', 'footer_privacy' => 'Privacy policy link text', 'footer_terms' => 'Terms & conditions link text', 'f_consent' => 'Line under the form (ends right before the Privacy Policy link)', 'footer_disclaimer' => 'Disclaimer',
         'meta_desc' => 'Description shown under your site name in Google',
     ];
     if (isset($L[$k])) {
@@ -459,6 +459,26 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             }
             go('team');
 
+        case 'legal_save':
+            $legal = [];
+            $defl = ms_legal_defaults();
+            $in = (array) ($_POST['l'] ?? []);
+            foreach (array_keys(ms_legal_pages()) as $k) {
+                $row = (array) ($in[$k] ?? []);
+                $e = ['show' => !empty($row['show'])];
+                foreach (['es', 'en'] as $l) {
+                    $v = ms_block($row[$l] ?? '', 40000);
+                    $e[$l] = ($v !== '' && $v !== trim((string) ($defl[$k][$l] ?? ''))) ? $v : '';
+                }
+                $legal[$k] = $e;
+            }
+            $ok = ms_update('settings', function ($st) use ($legal) {
+                $st['legal'] = $legal;
+                return $st;
+            });
+            $ok ? flash('ok', 'Legal pages saved.') : flash('err', 'Could not save: the "data" folder is not writable.');
+            go('legal');
+
         case 'texts_save':
             $in = (array) ($_POST['t'] ?? []);
             $new = ['es' => [], 'en' => []];
@@ -642,7 +662,7 @@ code{background:#fff;border:1px solid var(--line);border-radius:4px;padding:1px 
 </div></div>
 <nav class="tabs"><div class="wrap">
   <?php
-    $tabs = ['messages' => 'Messages', 'site' => 'Site info', 'team' => 'Team', 'texts' => 'Page texts', 'account' => 'Account'];
+    $tabs = ['messages' => 'Messages', 'site' => 'Site info', 'team' => 'Team', 'texts' => 'Page texts', 'legal' => 'Legal pages', 'account' => 'Account'];
     foreach ($tabs as $k => $label) {
         echo '<a href="' . h($self) . '?tab=' . $k . '"' . ($k === $tab ? ' class="on" aria-current="page"' : '') . '>' . h($label);
         if ($k === 'messages' && $unread > 0) {
@@ -727,10 +747,10 @@ foreach ($messages as $m) {
     }
 }
 $tab = (string) ($_GET['tab'] ?? 'messages');
-if (!in_array($tab, ['messages', 'site', 'team', 'texts', 'account'], true)) {
+if (!in_array($tab, ['messages', 'site', 'team', 'texts', 'legal', 'account'], true)) {
     $tab = 'messages';
 }
-$titles = ['messages' => 'Messages', 'site' => 'Site info', 'team' => 'Team', 'texts' => 'Page texts', 'account' => 'Account'];
+$titles = ['messages' => 'Messages', 'site' => 'Site info', 'team' => 'Team', 'texts' => 'Page texts', 'legal' => 'Legal pages', 'account' => 'Account'];
 layout_open($titles[$tab], true, $tab, $unread);
 echo '<main><div class="wrap">';
 show_flash();
@@ -888,6 +908,33 @@ if ($tab === 'texts') {
       </div></details>
     <?php endforeach; ?>
       <div class="sticky"><div class="bar"><button class="btn pri" type="submit">Save page texts</button></div></div>
+    </form>
+    <?php
+}
+
+/* ---- Legal pages ---- */
+if ($tab === 'legal') {
+    $eff = ms_legal_effective($S);
+    $defl = ms_legal_defaults();
+    $siteroot = (ms_is_https() ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? '');
+    ?>
+    <h2>Legal pages</h2>
+    <p class="lead">Privacy Policy, Terms &amp; Conditions and Legal Notice, in Spanish and English. Each page appears in the website footer and is shown in the visitor's language. Untick "Show this page" to hide a page and its footer link.</p>
+    <div class="card" style="border-color:#C29650"><b>Starter drafts.</b> The texts below are generic drafts, not legal advice. Have a Costa Rican attorney review and complete them (look for the parts in [square brackets]) before relying on them.</div>
+    <div class="card"><h3>Format</h3>
+      <p class="hint" style="margin:0">Start a line with <code>## </code> for a heading and with <code>- </code> for a bullet point. Leave a blank line between paragraphs. You can write <code>{brand}</code>, <code>{email}</code>, <code>{address}</code>, <code>{phone}</code> and <code>{site}</code>: they are filled in from Site info automatically. Clear a box to go back to the starter draft.</p></div>
+    <form method="post" action="<?= h($self) ?>"><?= csrf_field() ?><input type="hidden" name="action" value="legal_save">
+    <?php foreach (ms_legal_pages() as $k => $pg) :
+        $edited = ($S['legal'][$k]['es'] ?? '') !== '' || ($S['legal'][$k]['en'] ?? '') !== ''; ?>
+      <details class="grp"<?= $edited ? '' : '' ?>><summary><?= h($pg['label']) ?> <span class="hint" style="font-weight:400">— <?= h($siteroot) ?>/<?= h($pg['slug']) ?></span><?= $edited ? ' <span class="badge">edited</span>' : '' ?><?= $eff[$k]['show'] ? '' : ' <span class="badge">hidden</span>' ?></summary><div class="in">
+        <div class="trow"><label style="display:flex;gap:10px;align-items:center;font-weight:600"><input type="checkbox" name="l[<?= h($k) ?>][show]" value="1"<?= $eff[$k]['show'] ? ' checked' : '' ?> style="width:20px;height:20px"> Show this page on the website</label></div>
+        <?php foreach (['es' => 'Spanish', 'en' => 'English'] as $l => $ln) : ?>
+          <div class="trow"><label class="lab" for="l_<?= h($k . '_' . $l) ?>"><?= h($ln) ?></label>
+            <textarea id="l_<?= h($k . '_' . $l) ?>" name="l[<?= h($k) ?>][<?= h($l) ?>]" rows="16" maxlength="40000" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.5"><?= h($eff[$k][$l]) ?></textarea></div>
+        <?php endforeach; ?>
+      </div></details>
+    <?php endforeach; ?>
+      <div class="sticky"><div class="bar"><button class="btn pri" type="submit">Save legal pages</button></div></div>
     </form>
     <?php
 }

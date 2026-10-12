@@ -12,6 +12,12 @@ ErrorDocument 404 /404.html
   RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 </IfModule>
 
+# --- Clean addresses for the legal pages ---
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^(aviso-legal|privacidad|terminos)/?$ legal.php?p=$1 [L,QSA]
+</IfModule>
+
 # --- Security headers ---
 <IfModule mod_headers.c>
   Header always set X-Frame-Options "DENY"

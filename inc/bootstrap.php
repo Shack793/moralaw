@@ -208,6 +208,7 @@ function ms_defaults(): array
             ['name' => 'Charles Solano', 'role_es' => 'Socio Fundador', 'role_en' => 'Founding Partner', 'photo' => ''],
         ],
         'texts' => ['es' => [], 'en' => []],
+        'legal' => [],
     ];
 }
 
@@ -241,6 +242,18 @@ function ms_settings(bool $fresh = false): array
         foreach (['es', 'en'] as $l) {
             if (isset($s['texts'][$l]) && is_array($s['texts'][$l])) {
                 $d['texts'][$l] = $s['texts'][$l];
+            }
+        }
+    }
+    if (isset($s['legal']) && is_array($s['legal'])) {
+        foreach (array_keys(ms_legal_pages()) as $k) {
+            if (isset($s['legal'][$k]) && is_array($s['legal'][$k])) {
+                $e = $s['legal'][$k];
+                $d['legal'][$k] = [
+                    'show' => !isset($e['show']) || !empty($e['show']),
+                    'es' => isset($e['es']) && is_string($e['es']) ? $e['es'] : '',
+                    'en' => isset($e['en']) && is_string($e['en']) ? $e['en'] : '',
+                ];
             }
         }
     }
@@ -362,4 +375,103 @@ function ms_mail(string $to, string $subject, string $body, string $replyName = 
         $headers[] = 'Reply-To: ' . ($replyName !== '' ? mb_encode_mimeheader($replyName, 'UTF-8') . ' ' : '') . '<' . $replyEmail . '>';
     }
     return (bool) @mail($to, mb_encode_mimeheader($subject, 'UTF-8'), $body, implode("\r\n", $headers), '-f' . $from);
+}
+
+/* ----------------------------------------------------------------- legal pages */
+
+/** The legal pages: key => public slug, titles, and the footer text key. */
+function ms_legal_pages(): array
+{
+    return [
+        'notice'  => ['slug' => 'aviso-legal', 'es' => 'Aviso Legal', 'en' => 'Legal Notice', 'label' => 'Legal Notice', 'foot' => 'footer_legal'],
+        'privacy' => ['slug' => 'privacidad', 'es' => 'Política de Privacidad', 'en' => 'Privacy Policy', 'label' => 'Privacy Policy', 'foot' => 'footer_privacy'],
+        'terms'   => ['slug' => 'terminos', 'es' => 'Términos y Condiciones', 'en' => 'Terms & Conditions', 'label' => 'Terms & Conditions', 'foot' => 'footer_terms'],
+    ];
+}
+
+function ms_legal_defaults(): array
+{
+    static $d = null;
+    if ($d === null) {
+        $d = @include __DIR__ . '/legal.defaults.php';
+        if (!is_array($d)) {
+            $d = [];
+        }
+    }
+    return $d;
+}
+
+/** Replaces {brand}, {email}, {address}, {phone}, {site} in a legal text. */
+function ms_legal_tokens(string $t, array $S): string
+{
+    $C = $S['contact'];
+    $addr = trim($C['address1'] . ($C['address1'] !== '' && $C['address2'] !== '' ? ', ' : '') . $C['address2']);
+    return strtr($t, [
+        '{brand}' => ms_brand($S),
+        '{email}' => $C['email'] !== '' ? $C['email'] : '[email]',
+        '{address}' => $addr !== '' ? $addr : '[address]',
+        '{phone}' => $C['phone'] !== '' ? $C['phone'] : '[phone]',
+        '{site}' => ms_host(),
+    ]);
+}
+
+/** Effective legal pages: key => ['show'=>bool, 'es'=>text, 'en'=>text] (tokens NOT yet replaced). */
+function ms_legal_effective(array $S): array
+{
+    $def = ms_legal_defaults();
+    $out = [];
+    foreach (array_keys(ms_legal_pages()) as $k) {
+        $o = $S['legal'][$k] ?? null;
+        $row = ['show' => $o === null ? true : $o['show']];
+        foreach (['es', 'en'] as $l) {
+            $v = $o !== null ? trim($o[$l]) : '';
+            $row[$l] = $v !== '' ? $o[$l] : (string) ($def[$k][$l] ?? '');
+        }
+        $out[$k] = $row;
+    }
+    return $out;
+}
+
+/** Safe HTML from the simple legal format: "## Heading", paragraphs, "- " bullets. */
+function ms_legal_html(string $text): string
+{
+    $text = str_replace(["\r\n", "\r"], "\n", $text);
+    $html = '';
+    $inList = false;
+    $para = [];
+    $flush = function () use (&$html, &$para) {
+        if ($para) {
+            $html .= '<p>' . implode('<br>', array_map('h', $para)) . "</p>\n";
+            $para = [];
+        }
+    };
+    foreach (explode("\n", $text) as $line) {
+        $line = rtrim($line);
+        if (preg_match('/^- +(.+)$/u', $line, $m)) {
+            $flush();
+            if (!$inList) {
+                $html .= "<ul>\n";
+                $inList = true;
+            }
+            $html .= '<li>' . h($m[1]) . "</li>\n";
+            continue;
+        }
+        if ($inList) {
+            $html .= "</ul>\n";
+            $inList = false;
+        }
+        if (preg_match('/^##+ +(.+)$/u', $line, $m)) {
+            $flush();
+            $html .= '<h2>' . h($m[1]) . "</h2>\n";
+        } elseif (trim($line) === '') {
+            $flush();
+        } else {
+            $para[] = $line;
+        }
+    }
+    $flush();
+    if ($inList) {
+        $html .= "</ul>\n";
+    }
+    return $html;
 }

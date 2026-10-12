@@ -77,7 +77,9 @@
   "footer_rights": "© 2026 {brand}. Todos los derechos reservados.",
   "footer_legal": "Aviso Legal",
   "footer_privacy": "Política de Privacidad",
-  "footer_disclaimer": "La información de este sitio web es de carácter general y no constituye asesoría legal ni crea una relación abogado–cliente. Contáctenos para analizar su situación particular."
+  "footer_disclaimer": "La información de este sitio web es de carácter general y no constituye asesoría legal ni crea una relación abogado–cliente. Contáctenos para analizar su situación particular.",
+  "footer_terms": "Términos y Condiciones",
+  "f_consent": "Al enviar este formulario, usted acepta que usemos sus datos para responder su consulta. Consulte nuestra"
  },
  "en": {
   "skip": "Skip to content",
@@ -157,6 +159,8 @@
   "footer_rights": "© 2026 {brand}. All rights reserved.",
   "footer_legal": "Legal Notice",
   "footer_privacy": "Privacy Policy",
-  "footer_disclaimer": "The information on this website is general and does not constitute legal advice or create an attorney–client relationship. Please contact us about your specific situation."
+  "footer_disclaimer": "The information on this website is general and does not constitute legal advice or create an attorney–client relationship. Please contact us about your specific situation.",
+  "footer_terms": "Terms & Conditions",
+  "f_consent": "By submitting this form, you agree that we may use your data to answer your inquiry. See our"
  }
 }
